@@ -1,0 +1,7 @@
+date,description,payer,amount,currency,splitType,splits
+2026-02-15,Groceries flat,Aisha,1200,INR,EQUAL,"Aisha, Rohan, Priya, Meera"
+2026-02-16,Electricity,UnknownGuy,2500,INR,EQUAL,"Aisha, Rohan"
+2026-02-17,Internet bill,Rohan K,800,INR,EQUAL,"Aisha, Rohan"
+2026-02-18,Rohan paid back Aisha,Rohan,500,INR,EXACT,Aisha:500
+2026-02-19,Snacks,Priya,-150,INR,EQUAL,"Priya, Aisha"
+2026-04-05,Brunch trip,Aisha,1800,INR,EQUAL,"Aisha, Rohan, Meera"

@@ -1,0 +1,147 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String         @id @default(uuid())
+  email               String         @unique
+  name                String
+  passwordHash        String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  memberships         Membership[]
+  expensesPaid        Expense[]      @relation("Payer")
+  shares              ExpenseShare[]
+  settlementsPaid     Settlement[]   @relation("SettlementPayer")
+  settlementsReceived Settlement[]   @relation("SettlementReceiver")
+}
+
+model Group {
+  id           String       @id @default(uuid())
+  name         String
+  description  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+  expenses     Expense[]
+  settlements  Settlement[]
+  importJobs   ImportJob[]
+}
+
+model Membership {
+  id        String    @id @default(uuid())
+  userId    String
+  groupId   String
+  joinedAt  DateTime
+  leftAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId, joinedAt])
+  @@index([groupId])
+}
+
+model Expense {
+  id             String         @id @default(uuid())
+  groupId        String
+  payerId        String
+  amount         Decimal
+  currency       String         // e.g. "INR", "USD"
+  amountINR      Decimal
+  description    String
+  date           DateTime
+  splitType      String         // "EQUAL", "EXACT", "PERCENTAGE", "WEIGHTED"
+  importJobId    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  group          Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer          User           @relation("Payer", fields: [payerId], references: [id])
+  shares         ExpenseShare[]
+  importJob      ImportJob?     @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+  @@index([payerId])
+}
+
+model ExpenseShare {
+  id             String   @id @default(uuid())
+  expenseId      String
+  userId         String
+  originalShare  Decimal  // raw split percentage, weight, or amount
+  shareAmountINR Decimal  // actual debt portion in INR
+  user           User     @relation(fields: [userId], references: [id])
+  expense        Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, userId])
+}
+
+model Settlement {
+  id          String     @id @default(uuid())
+  groupId     String
+  payerId     String     // Person paying off debt
+  receiverId  String     // Person receiving payment
+  amount      Decimal
+  currency    String     // e.g. "INR", "USD"
+  amountINR   Decimal
+  date        DateTime
+  importJobId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  group       Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer       User       @relation("SettlementPayer", fields: [payerId], references: [id])
+  receiver    User       @relation("SettlementReceiver", fields: [receiverId], references: [id])
+  importJob   ImportJob? @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+  @@index([payerId])
+  @@index([receiverId])
+}
+
+model ExchangeRate {
+  id           String   @id @default(uuid())
+  fromCurrency String
+  toCurrency   String
+  rate         Decimal
+  date         DateTime @default(now())
+
+  @@unique([fromCurrency, toCurrency])
+}
+
+model ImportJob {
+  id           String       @id @default(uuid())
+  groupId      String
+  fileName     String
+  status       String       // "PENDING", "PROCESSED", "IMPORTED", "FAILED"
+  totalRows    Int
+  importedRows Int
+  flaggedRows  Int
+  rawDataJson  String?      // Staged JSON dump of raw records to support the validation review
+  group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  anomalies    Anomaly[]
+  expenses     Expense[]
+  settlements  Settlement[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([groupId])
+}
+
+model Anomaly {
+  id             String    @id @default(uuid())
+  importJobId    String
+  rowNumber      Int?
+  rawRowData     String?   // JSON representation of row for debugging
+  anomalyType    String
+  severity       String    // "INFO", "WARNING", "ERROR"
+  detectedReason String
+  actionTaken    String
+  importJob      ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+
+  @@index([importJobId])
+}

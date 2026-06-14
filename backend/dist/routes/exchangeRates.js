@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const exchangeRateController_1 = require("../controllers/exchangeRateController");
+const auth_1 = require("../middlewares/auth");
+const router = (0, express_1.Router)();
+router.use(auth_1.authMiddleware);
+router.get('/', exchangeRateController_1.getExchangeRates);
+router.post('/', exchangeRateController_1.updateExchangeRate);
+exports.default = router;
